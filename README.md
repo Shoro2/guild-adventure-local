@@ -1,7 +1,7 @@
 # Guild Adventure (local)
 
 Play Guild Adventure alone on your own Windows PC: a guild management game on a World of Warcraft 3.3.5a server
-where you lead a guild of up to 40 bots. This repository holds only the installer and the launcher; the server and the
+where you lead a guild of up to 39 bots. This repository holds only the installer and the launcher; the server and the
 game's code are in `guild-adventure-server`.
 
 > **Disclaimer.** Guild Adventure is a fan project. It is not affiliated with, endorsed by or sponsored by Blizzard
@@ -48,6 +48,9 @@ the usual ones (3724, 8085, 3306) are taken by something else.
 
 `Start.cmd` (or the desktop shortcut) starts the database, the login server and the world server, then your client.
 Log in with your account; your first character becomes the guild leader. `Stop.cmd` saves and stops everything.
+
+How to play, from your first bots to raids: the
+[player guide](https://github.com/Shoro2/guild-adventure-server/blob/main/guide/README.md) in `guild-adventure-server`.
 
 ## Remove
 
