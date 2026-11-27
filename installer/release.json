@@ -1,0 +1,16 @@
+{
+  "version": "0.1.0",
+  "server": {
+    "file": "guild-adventure-server-win64-0.1.0.zip",
+    "url": "https://github.com/Shoro2/guild-adventure-server/releases/download/v0.1.0/guild-adventure-server-win64-0.1.0.zip",
+    "sha256": "0BD732D68FC917C4420C96840E3F9E119CED703B3D085D7CEA5196DF74809294"
+  },
+  "mysql": {
+    "file": "mysql-8.4.5-winx64.zip",
+    "url": "https://downloads.mysql.com/archives/get/p/23/file/mysql-8.4.5-winx64.zip",
+    "sha256": ""
+  },
+  "vcredist": {
+    "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+  }
+}

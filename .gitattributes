@@ -1,0 +1,4 @@
+* text=auto
+# cmd.exe wants CRLF in batch files; the PowerShell scripts get them too (a ZIP download from GitHub follows this file)
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
