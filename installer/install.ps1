@@ -124,7 +124,7 @@ if ($vc -and $vc.Installed -eq 1 -and [int]$vc.Major -ge 14) { Write-Host "prese
 else
 {
     $file = Join-Path $downloads 'vc_redist.x64.exe'
-    Get-Checked $GaRelease.vcredist.url $file ''
+    Get-Checked (Get-ReleaseUrls $GaRelease.vcredist) $file '' ('Install the Visual C++ Redistributable for Visual Studio 2015-2022 (x64) from Microsoft yourself, then run Install.cmd again.')
     Write-Host 'installing (Windows asks for permission) ...'
     $p = Start-Process $file -ArgumentList '/install', '/quiet', '/norestart' -Verb RunAs -Wait -PassThru
     if ($p.ExitCode -notin 0, 1638, 3010) { throw "The Visual C++ runtime installer ended with code $($p.ExitCode)" }
@@ -139,7 +139,7 @@ if (-not (Test-GaStep $inst 'server'))
     if (-not $zip)
     {
         $zip = Join-Path $downloads $GaRelease.server.file
-        Get-Checked $GaRelease.server.url $zip $GaRelease.server.sha256
+        Get-Checked (Get-ReleaseUrls $GaRelease.server) $zip $GaRelease.server.sha256 ('Download ' + $GaRelease.server.file + ' yourself from the guild-adventure-server releases and run: Install.cmd -Package "<path to the zip>"')
     }
     if (Test-Path $server) { Get-ChildItem $server -Exclude 'Data' | Remove-Item -Recurse -Force }
     Expand-Into $zip $server
@@ -156,7 +156,7 @@ elseif (-not $inst.MySqlRoot -or -not (Test-Path (Join-Path $inst.MySqlRoot 'bin
     if (-not $zip)
     {
         $zip = Join-Path $downloads $GaRelease.mysql.file
-        Get-Checked $GaRelease.mysql.url $zip $GaRelease.mysql.sha256
+        Get-Checked (Get-ReleaseUrls $GaRelease.mysql) $zip $GaRelease.mysql.sha256 ('Download ' + $GaRelease.mysql.file + ' (MySQL Community Server 8.4.5, Windows x64, ZIP Archive) yourself from dev.mysql.com and run: Install.cmd -MySqlZip "<path to the zip>"')
     }
     $root = Join-Path $InstallDir 'mysql'
     Expand-Into $zip $root

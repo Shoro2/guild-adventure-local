@@ -7,7 +7,11 @@
   },
   "mysql": {
     "file": "mysql-8.4.5-winx64.zip",
-    "url": "https://downloads.mysql.com/archives/get/p/23/file/mysql-8.4.5-winx64.zip",
+    "url": "https://cdn.mysql.com/archives/mysql-8.4/mysql-8.4.5-winx64.zip",
+    "urls": [
+      "https://cdn.mysql.com/archives/mysql-8.4/mysql-8.4.5-winx64.zip",
+      "https://downloads.mysql.com/archives/get/p/23/file/mysql-8.4.5-winx64.zip"
+    ],
     "sha256": "7281F4E98810AF7526EFC6BD38A06FB9AC3692264BC51718ED85A465DBDE7541"
   },
   "vcredist": {

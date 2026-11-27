@@ -79,18 +79,69 @@ function Wait-Port([int] $Port, [int] $Seconds, [Diagnostics.Process] $Process =
 
 # --- downloads ------------------------------------------------------------------------------------------------------
 
-function Get-Checked([string] $Url, [string] $File, [string] $Sha256)
+function Get-ReleaseUrls($Entry)
 {
+    # The sources of a download in release.json: "urls" (tried in that order), else "url".
+    if ($Entry.PSObject.Properties['urls'] -and $Entry.urls) { return @($Entry.urls) }
+    return @($Entry.url)
+}
+
+function Test-FileKind([string] $Path, [string] $Name)
+{
+    # A server that cannot deliver a file often sends an HTML page with status 200 instead; a zip starts with "PK", a
+    # Windows program with "MZ". Other kinds are not checked.
+    $want = switch ([IO.Path]::GetExtension($Name).ToLowerInvariant()) { '.zip' { 'PK' } '.exe' { 'MZ' } default { '' } }
+    if (-not $want) { return $true }
+    $bytes = New-Object byte[] 2
+    $stream = [IO.File]::OpenRead($Path)
+    try { $read = $stream.Read($bytes, 0, 2) } finally { $stream.Dispose() }
+    return $read -eq 2 -and [Text.Encoding]::ASCII.GetString($bytes) -eq $want
+}
+
+function Get-Checked($Urls, [string] $File, [string] $Sha256, [string] $Hint = '')
+{
+    # Downloads $File from the first source of $Urls that delivers it. A failed request, a page instead of the file and
+    # a wrong checksum count as a failure of that source, and the next one is tried; when none delivers, the error
+    # names every source with its reason, and $Hint says what the user can do instead.
     if ((Test-Path $File) -and $Sha256 -and (Get-FileHash $File -Algorithm SHA256).Hash -eq $Sha256) { return }
-    Write-Host "download: $Url"
     $part = "$File.part"
-    Invoke-WebRequest -Uri $Url -OutFile $part -UseBasicParsing
-    if ($Sha256)
+    $failed = @()
+    foreach ($url in @($Urls | Where-Object { $_ }))
     {
-        $hash = (Get-FileHash $part -Algorithm SHA256).Hash
-        if ($hash -ne $Sha256) { Remove-Item $part; throw "Checksum mismatch for $Url (got $hash, want $Sha256)" }
+        Write-Host "download: $url"
+        if (Test-Path $part) { Remove-Item -Force $part }
+        $why = ''
+        try { Invoke-WebRequest -Uri $url -OutFile $part -UseBasicParsing -ErrorAction Stop }
+        catch
+        {
+            $response = $_.Exception.Response
+            if ($response -and $response.StatusCode) { $why = "the server answered $([int]$response.StatusCode) $($response.StatusCode)" }
+            else
+            {
+                $why = [string]($_.Exception.Message -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 1)
+                if (-not $why) { $why = 'the download failed' }
+                elseif ($why.Length -gt 160) { $why = $why.Substring(0, 160) + ' ...' }
+            }
+        }
+        if (-not $why -and -not (Test-Path $part)) { $why = 'nothing arrived' }
+        if (-not $why -and -not (Test-FileKind $part $File)) { $why = 'the server sent a web page instead of the file' }
+        if (-not $why -and $Sha256)
+        {
+            $hash = (Get-FileHash $part -Algorithm SHA256).Hash
+            if ($hash -ne $Sha256) { $why = "the checksum does not match (got $hash, want $Sha256)" }
+        }
+        if (-not $why)
+        {
+            Move-Item -Force $part $File
+            return
+        }
+        Write-Host "  failed: $why" -ForegroundColor Yellow
+        $failed += "  $url : $why"
+        if (Test-Path $part) { Remove-Item -Force $part }
     }
-    Move-Item -Force $part $File
+    $text = "Could not download $([IO.Path]::GetFileName($File)):`n" + ($failed -join "`n")
+    if ($Hint) { $text += "`n$Hint" }
+    throw $text
 }
 
 function Expand-Into([string] $Zip, [string] $Dest)
