@@ -38,6 +38,14 @@ param(
 . "$PSScriptRoot\common.ps1"
 
 if (-not $InstallDir) { $InstallDir = Join-Path $GaRepo 'game' }
+# MySQL and the extractors take their paths in the system's code page: letters outside ASCII in the install folder's
+# path (Cyrillic, umlauts, accents) break them.
+if ($InstallDir -match '[^\x20-\x7E]')
+{
+    throw ("The install folder $InstallDir has letters outside A-Z in its path, which MySQL cannot use. Put this " +
+        "folder somewhere like C:\Games\GuildAdventure and run Install.cmd there, or give another folder with " +
+        "Install.cmd -InstallDir `"C:\Games\GuildAdventure\game`".")
+}
 New-Item -ItemType Directory -Force $InstallDir | Out-Null
 $InstallDir = (Resolve-Path $InstallDir).Path
 $downloads = Join-Path $InstallDir 'downloads'
