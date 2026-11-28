@@ -68,25 +68,19 @@ function Update-GaFiles($Latest)
 function Invoke-GaUpdateCheck($Inst)
 {
     # Start.cmd: when GitHub has a newer release, offers to update (new installer files, then Install.cmd, which
-    # replaces the server). Returns $true when the update ran; without a network it says nothing and goes on.
+    # replaces the server), at every start until it is taken. Returns $true when the update ran; without a network it
+    # says nothing and goes on.
     $latest = Get-GaLatestRelease
     if (-not $latest -or -not (Test-GaNewer $latest.version $GaRelease.version)) { return $false }
-    if ($Inst.PSObject.Properties['UpdateDeclined'] -and $Inst.UpdateDeclined -eq $latest.version)
-    {
-        Write-Host "Guild Adventure $($latest.version) is available (you have $($GaRelease.version)): see README.md, Update." -ForegroundColor Yellow
-        return $false
-    }
     Add-Type -AssemblyName System.Windows.Forms
     $top = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true }
     $question = "Guild Adventure $($latest.version) is available (you have $($GaRelease.version)).`n`nUpdate now? " +
         "The new files and the new server are downloaded; your characters, databases and server data stay. " +
-        "It takes a few minutes.`n`nNo: start as it is (you are asked again for the next version)."
+        "It takes a few minutes.`n`nNo: start as it is (you are asked again at the next start)."
     $answer = [System.Windows.Forms.MessageBox]::Show($top, $question, 'Guild Adventure', 'YesNo', 'Question')
     $top.Dispose()
     if ($answer -ne [System.Windows.Forms.DialogResult]::Yes)
     {
-        $Inst | Add-Member -NotePropertyName UpdateDeclined -NotePropertyValue $latest.version -Force
-        Save-GaInstall $Inst
         return $false
     }
     Write-Step "Update to Guild Adventure $($latest.version)"

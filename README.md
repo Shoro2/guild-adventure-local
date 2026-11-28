@@ -62,7 +62,7 @@ How to play, from your first bots to raids: the
 
 From version 0.1.1 on, `Start.cmd` looks on GitHub for a newer version each time it starts (a few seconds at most;
 without a connection it starts as it is). When there is one it asks whether to update now: Yes downloads the new files
-and the new server and starts the game afterwards, No starts as it is and asks again for the next version.
+and the new server and starts the game afterwards, No starts as it is and asks again at the next start.
 
 By hand (and once from version 0.1.0, which has no such check): run `Stop.cmd`. Download this repository again
 (Code, Download ZIP), unpack it and copy its files into your old folder, replacing the old ones; the folder `game`
