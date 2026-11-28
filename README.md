@@ -18,7 +18,9 @@ game's code are in `guild-adventure-server`.
 
 ## Install
 
-1. Download this repository (Code, Download ZIP) and unpack it, for example to `C:\Games\GuildAdventure`.
+1. Download this repository (Code, Download ZIP) and unpack it, for example to `C:\Games\GuildAdventure`. The folder's
+   path may hold only letters A-Z, digits and the usual signs: MySQL does not start from a path with other letters
+   (for example your Desktop, when your Windows user name has Cyrillic letters or umlauts).
 2. Double-click `Install.cmd`.
 3. Choose your client folder (the one with `Wow.exe`).
 4. Say whether you already have server data (see below); if not, the installer extracts it from your client.
