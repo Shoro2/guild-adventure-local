@@ -312,17 +312,46 @@ if (-not (Test-GaStep $inst 'account'))
 Write-Step 'Addon and realmlist in your client'
 $addonSrc = Join-Path $server 'addon\GuildAdventure'
 $addonDst = Join-Path $inst.Client 'Interface\AddOns\GuildAdventure'
-if (Test-Path $addonDst) { Remove-Item -Recurse -Force $addonDst }
-New-Item -ItemType Directory -Force (Split-Path $addonDst) | Out-Null
-Copy-Item -Recurse $addonSrc $addonDst
+$realmLine = "set realmlist 127.0.0.1:$($inst.Ports.Auth)"
+# The client's folder may not be writable (for example below C:\Program Files without administrator rights): then
+# the installer goes on and says what to do by hand, here and again at the end.
+$clientHints = @()
+try
+{
+    if (Test-Path $addonDst) { Remove-Item -Recurse -Force $addonDst }
+    New-Item -ItemType Directory -Force (Split-Path $addonDst) | Out-Null
+    Copy-Item -Recurse $addonSrc $addonDst
+}
+catch { Write-Host "  could not write the addon into your client: $($_.Exception.Message)" -ForegroundColor Yellow }
+if (Test-Path (Join-Path $addonDst 'GuildAdventure.toc')) { Write-Host "addon: $addonDst" }
+else
+{
+    $clientHints += "Copy the folder $addonSrc by hand into $(Split-Path $addonDst) (like any other addon), " +
+        "or run Install.cmd again as administrator."
+}
 foreach ($loc in $locales)
 {
     $rl = Join-Path $loc.FullName 'realmlist.wtf'
     $backup = "$rl.before-guild-adventure"
-    if ((Test-Path $rl) -and -not (Test-Path $backup)) { Copy-Item $rl $backup }
-    "set realmlist 127.0.0.1:$($inst.Ports.Auth)" | Set-Content $rl -Encoding ascii
+    try
+    {
+        if ((Test-Path $rl) -and -not (Test-Path $backup)) { Copy-Item $rl $backup }
+        $realmLine | Set-Content $rl -Encoding ascii
+    }
+    catch { Write-Host "  could not write $rl : $($_.Exception.Message)" -ForegroundColor Yellow }
+    if ((Test-Path $rl) -and ((Get-Content $rl -Raw) -match [regex]::Escape($realmLine)))
+    {
+        Write-Host "realmlist: $rl (127.0.0.1:$($inst.Ports.Auth); the old one saved as realmlist.wtf.before-guild-adventure)"
+    }
+    else { $clientHints += "Open $rl in a text editor and put this line into it alone: $realmLine" }
 }
-Write-Host "addon: $addonDst; realmlist: 127.0.0.1:$($inst.Ports.Auth) (the old one saved as realmlist.wtf.before-guild-adventure)"
+if ($clientHints)
+{
+    Write-Host ''
+    Write-Host 'The installer could not write into your client folder. Do this by hand:' -ForegroundColor Yellow
+    $clientHints | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
+    Write-Host "  (Start the game with the Wow.exe of $($inst.Client).)" -ForegroundColor Yellow
+}
 
 if (-not $NoShortcut)
 {
@@ -340,5 +369,10 @@ Complete-GaStep $inst 'done'
 Write-Step 'Done'
 Write-Host "Start the game with Start.cmd (or the desktop shortcut), stop the server with Stop.cmd."
 Write-Host "Log in with account $($inst.Player). Your first character on it becomes the guild leader."
+if ($clientHints)
+{
+    Write-Host 'Still to do by hand in your client (see above):' -ForegroundColor Yellow
+    $clientHints | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
+}
 if ($NoStart) { Stop-GaServers $inst; Stop-GaDatabase $inst }
 else { & (Join-Path $PSScriptRoot 'control.ps1') -Action Start -InstallDir $InstallDir }
