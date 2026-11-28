@@ -15,6 +15,7 @@ game's code are in `guild-adventure-server`.
 - Windows 10 or 11, 64-bit, and about 8 GB free disk space
 - Your own World of Warcraft 3.3.5a client, build 12340 (any locale)
 - An internet connection during the installation
+- Optional: "AC Data v20 enUS" files
 
 ## Install
 
