@@ -1,9 +1,9 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "server": {
-    "file": "guild-adventure-server-win64-0.1.1.zip",
-    "url": "https://github.com/Shoro2/guild-adventure-server/releases/download/v0.1.1/guild-adventure-server-win64-0.1.1.zip",
-    "sha256": "29426CF4CA6A5D73BAB65F9DD6BA77361A6435DF6E3A079C2574153FB07E0B0A"
+    "file": "guild-adventure-server-win64-0.1.2.zip",
+    "url": "https://github.com/Shoro2/guild-adventure-server/releases/download/v0.1.2/guild-adventure-server-win64-0.1.2.zip",
+    "sha256": "749C3A832CD34FB12C07E23596DE7E069A9A62344A811683A0314B019A802FC9"
   },
   "mysql": {
     "file": "mysql-8.4.5-winx64.zip",
