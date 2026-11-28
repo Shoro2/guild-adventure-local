@@ -32,7 +32,7 @@ The installer then:
 - checks that the client is 3.3.5a build 12340;
 - downloads the Guild Adventure server (from `guild-adventure-server`'s releases), MySQL 8.4 (from mysql.com) and, if
   missing, the Microsoft Visual C++ runtime (it asks for administrator rights for that one only);
-- extracts the server data (maps, vmaps, mmaps) from your client into the install folder; this takes one to three
+- extracts the server data (maps, vmaps, mmaps) from your client into the install folder if not provided; this takes one to three
   hours, and your client is only read;
 - sets up the databases, the server configuration and your account, all on 127.0.0.1;
 - copies the `GuildAdventure` addon into your client and sets its realmlist to 127.0.0.1 (the old `realmlist.wtf`
