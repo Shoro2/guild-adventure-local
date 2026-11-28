@@ -1,9 +1,9 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "server": {
-    "file": "guild-adventure-server-win64-0.1.0.zip",
-    "url": "https://github.com/Shoro2/guild-adventure-server/releases/download/v0.1.0/guild-adventure-server-win64-0.1.0.zip",
-    "sha256": "0BD732D68FC917C4420C96840E3F9E119CED703B3D085D7CEA5196DF74809294"
+    "file": "guild-adventure-server-win64-0.1.1.zip",
+    "url": "https://github.com/Shoro2/guild-adventure-server/releases/download/v0.1.1/guild-adventure-server-win64-0.1.1.zip",
+    "sha256": "29426CF4CA6A5D73BAB65F9DD6BA77361A6435DF6E3A079C2574153FB07E0B0A"
   },
   "mysql": {
     "file": "mysql-8.4.5-winx64.zip",
@@ -16,5 +16,9 @@
   },
   "vcredist": {
     "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+  },
+  "updates": {
+    "release": "https://raw.githubusercontent.com/Shoro2/guild-adventure-local/main/installer/release.json",
+    "files": "https://github.com/Shoro2/guild-adventure-local/archive/refs/heads/main.zip"
   }
 }

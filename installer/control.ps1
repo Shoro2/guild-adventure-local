@@ -7,18 +7,25 @@
 param(
     [ValidateSet('Start', 'Stop', 'Status')] [string] $Action = 'Start',
     [string] $InstallDir = '',
-    [switch] $NoClient
+    [switch] $NoClient,
+    [switch] $NoUpdateCheck
 )
 
 . "$PSScriptRoot\common.ps1"
 if (-not $InstallDir) { $InstallDir = Join-Path $GaRepo 'game' }
 $inst = Get-GaInstall (Resolve-Path $InstallDir).Path
 if (@($inst.Done) -notcontains 'done') { throw 'The installation is not finished: run Install.cmd again' }
+if ($Action -eq 'Start' -and "$($inst.Version)" -ne $GaRelease.version)
+{
+    throw "These files are version $($GaRelease.version), your installation is $($inst.Version): run Install.cmd once to update it"
+}
 
 switch ($Action)
 {
     'Start'
     {
+        # A newer release on GitHub: offered before the start; the update (Install.cmd) starts the game itself.
+        if (-not $NoUpdateCheck -and (Invoke-GaUpdateCheck $inst)) { return }
         Write-Step 'Starting Guild Adventure'
         Start-GaDatabase $inst
         Start-GaServer $inst 'authserver' $inst.Ports.Auth 60

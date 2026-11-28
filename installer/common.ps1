@@ -29,6 +29,97 @@ function Save-GaInstall($Inst)
 
 function Test-GaStep($Inst, [string] $Step) { return @($Inst.Done) -contains $Step }
 
+function Get-GaLatestRelease
+{
+    # The release file of the newest installer on GitHub, or $null: no network, GitHub down or slow, no updates entry.
+    if (-not $GaRelease.PSObject.Properties['updates']) { return $null }
+    try
+    {
+        $r = Invoke-WebRequest -Uri $GaRelease.updates.release -UseBasicParsing -TimeoutSec 5
+        $text = if ($r.Content -is [byte[]]) { [Text.Encoding]::UTF8.GetString($r.Content) } else { [string] $r.Content }
+        $latest = $text.TrimStart([char] 0xFEFF) | ConvertFrom-Json
+        if (-not $latest.version) { return $null }
+        return $latest
+    }
+    catch { return $null }
+}
+
+function Test-GaNewer([string] $Latest, [string] $Current)
+{
+    try { return ([version] $Latest) -gt ([version] $Current) } catch { return $false }
+}
+
+function Update-GaFiles($Latest)
+{
+    # Downloads the newest installer files and copies them over these; the install folder (game) stays as it is.
+    $zip = Join-Path $env:TEMP "guild-adventure-local-$($Latest.version).zip"
+    $tmp = Join-Path $env:TEMP "guild-adventure-local-$($Latest.version)"
+    Invoke-WebRequest -Uri $GaRelease.updates.files -OutFile $zip -UseBasicParsing -TimeoutSec 120
+    if (-not (Test-FileKind $zip $zip)) { throw "The download of $($GaRelease.updates.files) is no zip file" }
+    if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
+    Expand-Archive -Path $zip -DestinationPath $tmp
+    $items = @(Get-ChildItem $tmp)
+    $src = if ($items.Count -eq 1 -and $items[0].PSIsContainer) { $items[0].FullName } else { $tmp }
+    if (-not (Test-Path (Join-Path $src 'installer\install.ps1'))) { throw 'The download holds no installer' }
+    Get-ChildItem $src -Force | Where-Object { $_.Name -ne 'game' } | Copy-Item -Destination $GaRepo -Recurse -Force
+    Remove-Item -Recurse -Force $tmp, $zip
+}
+
+function Invoke-GaUpdateCheck($Inst)
+{
+    # Start.cmd: when GitHub has a newer release, offers to update (new installer files, then Install.cmd, which
+    # replaces the server). Returns $true when the update ran; without a network it says nothing and goes on.
+    $latest = Get-GaLatestRelease
+    if (-not $latest -or -not (Test-GaNewer $latest.version $GaRelease.version)) { return $false }
+    if ($Inst.PSObject.Properties['UpdateDeclined'] -and $Inst.UpdateDeclined -eq $latest.version)
+    {
+        Write-Host "Guild Adventure $($latest.version) is available (you have $($GaRelease.version)): see README.md, Update." -ForegroundColor Yellow
+        return $false
+    }
+    Add-Type -AssemblyName System.Windows.Forms
+    $top = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true }
+    $question = "Guild Adventure $($latest.version) is available (you have $($GaRelease.version)).`n`nUpdate now? " +
+        "The new files and the new server are downloaded; your characters, databases and server data stay. " +
+        "It takes a few minutes.`n`nNo: start as it is (you are asked again for the next version)."
+    $answer = [System.Windows.Forms.MessageBox]::Show($top, $question, 'Guild Adventure', 'YesNo', 'Question')
+    $top.Dispose()
+    if ($answer -ne [System.Windows.Forms.DialogResult]::Yes)
+    {
+        $Inst | Add-Member -NotePropertyName UpdateDeclined -NotePropertyValue $latest.version -Force
+        Save-GaInstall $Inst
+        return $false
+    }
+    Write-Step "Update to Guild Adventure $($latest.version)"
+    try { Update-GaFiles $latest }
+    catch
+    {
+        Write-Warning "The update could not be downloaded ($($_.Exception.Message)); Guild Adventure starts as it is."
+        return $false
+    }
+    Write-Host 'new installer files in place: Install.cmd replaces the server'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $GaRepo 'installer\install.ps1') -InstallDir $Inst.Dir
+    if ($LASTEXITCODE -ne 0) { throw 'The update stopped with an error: run Install.cmd again to go on where it stopped' }
+    return $true
+}
+
+function Update-GaRelease($Inst, [string] $Version)
+{
+    # An installation of an older release: its server is replaced in the server step (the downloads of this release),
+    # the configs and the addon are written anew as on every run; databases, characters, account and server data stay.
+    if ("$($Inst.Version)" -eq $Version) { return $false }
+    $old = if ($Inst.Version) { $Inst.Version } else { 'an older version' }
+    if (Test-GaStep $Inst 'server')
+    {
+        Write-Step "Update from $old to $Version"
+        Write-Host 'The server is replaced; your databases, characters, account and server data stay.'
+        Stop-GaServers $Inst
+        $Inst.Done = @(@($Inst.Done) | Where-Object { $_ -ne 'server' })
+    }
+    $Inst.Version = $Version
+    Save-GaInstall $Inst
+    return $true
+}
+
 function Complete-GaStep($Inst, [string] $Step)
 {
     $Inst.Done = @(@($Inst.Done) + $Step | Select-Object -Unique)

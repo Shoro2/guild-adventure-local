@@ -58,6 +58,18 @@ Log in with your account; your first character becomes the guild leader. `Stop.c
 How to play, from your first bots to raids: the
 [player guide](https://github.com/Shoro2/guild-adventure-server/blob/main/guide/README.md) in `guild-adventure-server`.
 
+## Update
+
+From version 0.1.1 on, `Start.cmd` looks on GitHub for a newer version each time it starts (a few seconds at most;
+without a connection it starts as it is). When there is one it asks whether to update now: Yes downloads the new files
+and the new server and starts the game afterwards, No starts as it is and asks again for the next version.
+
+By hand (and once from version 0.1.0, which has no such check): run `Stop.cmd`. Download this repository again
+(Code, Download ZIP), unpack it and copy its files into your old folder, replacing the old ones; the folder `game`
+stays as it is. Then run `Install.cmd`: it sees the new version, downloads the new server and replaces the old one.
+Your databases, characters, account and server data stay; nothing is extracted again. `Start.cmd` refuses to start
+an installation that is older than its files and asks for that `Install.cmd` run.
+
 ## Remove
 
 Run `Stop.cmd`, delete this folder and the desktop shortcut, delete `Interface\AddOns\GuildAdventure` from your client

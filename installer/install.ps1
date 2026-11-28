@@ -53,7 +53,11 @@ New-Item -ItemType Directory -Force $downloads | Out-Null
 
 # --- the installation's settings: new, or the ones of a run that stopped --------------------------------------------
 $stateFile = Join-Path $InstallDir 'guild-adventure.json'
-if (Test-Path $stateFile) { $inst = Get-GaInstall $InstallDir }
+if (Test-Path $stateFile)
+{
+    $inst = Get-GaInstall $InstallDir
+    Update-GaRelease $inst $GaRelease.version | Out-Null
+}
 else
 {
     $inst = [pscustomobject]@{
@@ -375,4 +379,4 @@ if ($clientHints)
     $clientHints | ForEach-Object { Write-Host "  - $_" -ForegroundColor Yellow }
 }
 if ($NoStart) { Stop-GaServers $inst; Stop-GaDatabase $inst }
-else { & (Join-Path $PSScriptRoot 'control.ps1') -Action Start -InstallDir $InstallDir }
+else { & (Join-Path $PSScriptRoot 'control.ps1') -Action Start -InstallDir $InstallDir -NoUpdateCheck }
