@@ -198,16 +198,33 @@ elseif (-not $inst.MySqlRoot -or -not (Test-Path (Join-Path $inst.MySqlRoot 'bin
     Expand-Into $zip $root
     $inst.MySqlRoot = $root
 }
+# The database's port was free when it was chosen; another MySQL may have taken it since. Until the database is
+# set up another port can still be chosen (the server's configs are written after this step).
+if (-not (Test-GaStep $inst 'mysql') -and -not (Test-PortFree $inst.Ports.Db) -and -not (Test-OurDatabase $inst))
+{
+    $old = $inst.Ports.Db
+    $inst.Ports.Db = Get-FreePort ($old + 1) @($inst.Ports.Auth, $inst.Ports.World, $inst.Ports.Soap)
+    Write-Host "port $old is taken by another program: the database uses port $($inst.Ports.Db)"
+}
 Save-GaInstall $inst
 Write-MySqlFiles $inst
 if (-not (Test-GaStep $inst 'mysql'))
 {
+    # A mysqld of this installation left from a run that stopped holds the data folder: end it first.
+    Get-Process mysqld -ErrorAction SilentlyContinue | Where-Object {
+        $path = ''; try { $path = $_.Path } catch { }
+        $path -and $path.StartsWith((Get-MySqlBin $inst), [StringComparison]::OrdinalIgnoreCase)
+    } | ForEach-Object { Write-Host "ending MySQL left from before (process $($_.Id))"; Stop-Process -Id $_.Id -Force; $_.WaitForExit(30000) | Out-Null }
     $data = Join-Path $InstallDir 'db\data'
     if (Test-Path $data) { Remove-Item -Recurse -Force $data }
     $mysqld = Join-Path (Get-MySqlBin $inst) 'mysqld.exe'
     $ini = Join-Path $InstallDir 'db\my.ini'
     & $mysqld "--defaults-file=$ini" --initialize-insecure 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "MySQL could not create its data folder (see $(Join-Path $InstallDir 'db\mysqld.err'))" }
+    if ($LASTEXITCODE -ne 0)
+    {
+        $err = Join-Path $InstallDir 'db\mysqld.err'
+        throw "MySQL could not create its data folder (code $LASTEXITCODE). The end of its log ($err):`n$(Get-LogTail $err)"
+    }
     Start-GaDatabase $inst
     $mysql = Join-Path (Get-MySqlBin $inst) 'mysql.exe'
     & $mysql -h 127.0.0.1 -P $inst.Ports.Db -u root --skip-password -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$($inst.Db.RootPassword)';"

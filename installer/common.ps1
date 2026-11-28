@@ -176,11 +176,15 @@ function Write-MySqlFiles($Inst)
 {
     $db = Join-Path $Inst.Dir 'db'
     New-Item -ItemType Directory -Force $db | Out-Null
+    # Its own temp folder: MySQL's default is the user's %TEMP%, which fails to start when the Windows user name
+    # holds letters outside ASCII (Cyrillic, umlauts).
+    New-Item -ItemType Directory -Force (Join-Path $db 'tmp') | Out-Null
     $fwd = { param($p) $p -replace '\\', '/' }
     @(
         '[mysqld]'
         "basedir=$(& $fwd $Inst.MySqlRoot)"
         "datadir=$(& $fwd (Join-Path $db 'data'))"
+        "tmpdir=$(& $fwd (Join-Path $db 'tmp'))"
         "port=$($Inst.Ports.Db)"
         'bind-address=127.0.0.1'
         'mysqlx=OFF'
@@ -196,13 +200,61 @@ function Write-MySqlFiles($Inst)
     ) | Set-Content (Join-Path $db 'client.cnf') -Encoding ascii
 }
 
+function Get-PortOwner([int] $Port)
+{
+    # The process that listens on $Port, or $null.
+    $id = $null
+    try { $id = (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Stop | Select-Object -First 1).OwningProcess }
+    catch
+    {
+        $line = netstat -ano -p TCP | Select-String -Pattern ":$Port\s+\S+\s+LISTENING\s+(\d+)" | Select-Object -First 1
+        if ($line) { $id = [int]$line.Matches[0].Groups[1].Value }
+    }
+    if (-not $id) { return $null }
+    return Get-Process -Id $id -ErrorAction SilentlyContinue
+}
+
+function Test-OurDatabase($Inst)
+{
+    # Is what listens on the database port this installation's own mysqld?
+    $owner = Get-PortOwner $Inst.Ports.Db
+    if (-not $owner) { return $false }
+    $path = ''
+    try { $path = $owner.Path } catch { }
+    return $path -and $path.StartsWith((Get-MySqlBin $Inst), [StringComparison]::OrdinalIgnoreCase)
+}
+
+function Get-LogTail([string] $Path, [int] $Lines = 25)
+{
+    if (-not (Test-Path $Path)) { return "  ($Path does not exist)" }
+    return ((Get-Content $Path -Tail $Lines -ErrorAction SilentlyContinue | ForEach-Object { "  $_" }) -join "`n")
+}
+
 function Start-GaDatabase($Inst)
 {
-    if (-not (Test-PortFree $Inst.Ports.Db)) { return }
+    $err = Join-Path $Inst.Dir 'db\mysqld.err'
+    if (-not (Test-PortFree $Inst.Ports.Db))
+    {
+        if (Test-OurDatabase $Inst) { return }
+        $owner = Get-PortOwner $Inst.Ports.Db
+        $who = 'another program'
+        if ($owner)
+        {
+            $ownerPath = ''
+            try { $ownerPath = $owner.Path } catch { }
+            $who = "$($owner.ProcessName) (process $($owner.Id)$(if ($ownerPath) { ', ' + $ownerPath }))"
+        }
+        throw ("Port $($Inst.Ports.Db) for Guild Adventure's database is taken by $who. Stop that program, " +
+            "or run Install.cmd again before the database is set up to choose another port.")
+    }
     $mysqld = Join-Path (Get-MySqlBin $Inst) 'mysqld.exe'
     $ini = Join-Path $Inst.Dir 'db\my.ini'
     $p = Start-Process $mysqld -ArgumentList "--defaults-file=`"$ini`"" -WindowStyle Hidden -PassThru
-    if (-not (Wait-Port $Inst.Ports.Db 120 $p)) { throw "MySQL did not start (see $(Join-Path $Inst.Dir 'db\mysqld.err'))" }
+    if (-not (Wait-Port $Inst.Ports.Db 300 $p))
+    {
+        $how = if ($p.HasExited) { "it ended with code $($p.ExitCode)" } else { 'it did not open its port within 5 minutes' }
+        throw "MySQL did not start: $how. The end of its log ($err):`n$(Get-LogTail $err)"
+    }
 }
 
 function Stop-GaDatabase($Inst)
