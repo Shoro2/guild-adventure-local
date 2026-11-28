@@ -20,7 +20,9 @@ game's code are in `guild-adventure-server`.
 
 1. Download this repository (Code, Download ZIP) and unpack it, for example to `C:\Games\GuildAdventure`.
 2. Double-click `Install.cmd`.
-3. Choose your client folder (the one with `Wow.exe`), then an account name and password when asked.
+3. Choose your client folder (the one with `Wow.exe`).
+4. Say whether you already have server data (see below); if not, the installer extracts it from your client.
+5. Enter an account name and password when asked.
 
 The installer then:
 
@@ -36,10 +38,11 @@ The installer then:
 
 If it stops (an error, a closed window), run `Install.cmd` again: it goes on where it stopped.
 
-**You already have server data?** If you have the server data of an AzerothCore server for 3.3.5a (a folder with
-`dbc`, `maps`, `vmaps` and `mmaps`), the installer can use it instead of extracting it (which saves the hours of the
-mmaps). Open a command prompt in this folder and run `Install.cmd -DataDir "D:\path\to\that\folder"`. The folder is used
-where it is and is never changed; keep it as long as you play.
+**You already have server data?** Right after the client folder the installer asks whether you have the server data
+of an AzerothCore server for 3.3.5a (a folder with `dbc`, `maps`, `vmaps` and `mmaps`). Answer Yes and choose that
+folder, and nothing is extracted (which saves the hours of the mmaps). The folder is used where it is and is never
+changed; keep it as long as you play. Without the question: `Install.cmd -DataDir "D:\path\to\that\folder"`, or
+`Install.cmd -Extract` to extract from the client.
 
 Everything except the addon and the realmlist goes into the folder `game` beside these files. Free ports are chosen if
 the usual ones (3724, 8085, 3306) are taken by something else.

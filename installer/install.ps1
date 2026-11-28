@@ -8,8 +8,9 @@
 #   .\installer\install.ps1                                  # asks what it needs
 #   .\installer\install.ps1 -Client "D:\WoW 3.3.5a" -Account ME -Password secret
 #
-# -DataDir <folder> uses server data you already have (the folders dbc, maps, vmaps and mmaps of an AzerothCore server
-# for 3.3.5a) instead of extracting it from your client; the folder is used where it is and never changed.
+# Before anything is downloaded it asks whether you already have the server data (the folders dbc, maps, vmaps and
+# mmaps of an AzerothCore server for 3.3.5a); that folder is used where it is and never changed, else the data is
+# extracted from your client. -DataDir <folder> gives the folder without asking, -Extract extracts without asking.
 #
 # Options for testing: -Package <server zip> and -MySqlZip <zip> use local files instead of the downloads, -MySqlRoot
 # uses an installed MySQL 8.4 as it is (its own data folder still lies in the install folder).
@@ -23,6 +24,7 @@ param(
     [string] $Account = '',
     [string] $Password = '',
     [string] $DataDir = '',
+    [switch] $Extract,
     [int] $Threads = 0,
     # Ports to start the search for a free one at (defaults: the game's 3724 and 8085, MySQL's 3306, SOAP 7878).
     [int] $AuthPort = 3724,
@@ -96,20 +98,54 @@ if (-not $inst.Ports)
 Save-GaInstall $inst
 Write-Host "ports: login $($inst.Ports.Auth), world $($inst.Ports.World), database $($inst.Ports.Db) (all on 127.0.0.1)"
 
-# Server data you already have: checked here, used where it is (worldserver.conf's DataDir points at it).
-if ($DataDir)
+# Server data you already have: asked for (unless -DataDir or -Extract says it), checked here, used where it is
+# (worldserver.conf's DataDir points at it). Without it the server data is extracted from your client in step 6.
+function Test-GaDataDir([string] $Dir)
 {
-    if (-not (Test-Path $DataDir)) { throw "No folder $DataDir" }
-    $DataDir = (Resolve-Path $DataDir).Path
+    # $null when $Dir holds the server data, else why not.
+    if (-not $Dir -or -not (Test-Path $Dir)) { return "There is no folder $Dir." }
     foreach ($need in @(@('dbc', '*.dbc'), @('maps', '*.map'), @('vmaps', '*.vmtree'), @('mmaps', '*.mmap')))
     {
-        if (-not (Get-ChildItem (Join-Path $DataDir $need[0]) -Filter $need[1] -ErrorAction SilentlyContinue | Select-Object -First 1))
+        if (-not (Get-ChildItem (Join-Path $Dir $need[0]) -Filter $need[1] -ErrorAction SilentlyContinue | Select-Object -First 1))
         {
-            throw "$DataDir has no $($need[0]) folder with $($need[1]) files: give the folder that holds dbc, maps, vmaps and mmaps"
+            return "$Dir has no folder $($need[0]) with $($need[1]) files. Choose the folder that holds dbc, maps, vmaps and mmaps."
         }
     }
+    return $null
+}
+
+if (-not $DataDir -and -not $Extract -and -not $inst.DataDir -and -not $inst.DataAsked -and -not (Test-GaStep $inst 'data'))
+{
+    Write-Step 'Server data'
+    Add-Type -AssemblyName System.Windows.Forms
+    $top = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true }   # keeps the dialogs in front of the console
+    $question = "Do you already have the server data of an AzerothCore server for 3.3.5a (a folder with dbc, maps, " +
+        "vmaps and mmaps)?`n`nYes: choose that folder; it is used where it is and never changed.`n" +
+        "No: the data is extracted from your client, which takes one to three hours."
+    while ($true)
+    {
+        $answer = [System.Windows.Forms.MessageBox]::Show($top, $question, 'Guild Adventure', 'YesNo', 'Question')
+        if ($answer -ne [System.Windows.Forms.DialogResult]::Yes) { break }
+        $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dlg.Description = 'Choose the folder with your server data (it holds dbc, maps, vmaps and mmaps)'
+        if ($dlg.ShowDialog($top) -ne [System.Windows.Forms.DialogResult]::OK) { continue }
+        $why = Test-GaDataDir $dlg.SelectedPath
+        if (-not $why) { $DataDir = $dlg.SelectedPath; break }
+        [void][System.Windows.Forms.MessageBox]::Show($top, $why, 'Guild Adventure', 'OK', 'Warning')
+    }
+    $top.Dispose()
+    $inst | Add-Member -NotePropertyName DataAsked -NotePropertyValue $true -Force
+    Save-GaInstall $inst
+    if (-not $DataDir) { Write-Host 'the server data will be extracted from your client' }
+}
+if ($DataDir)
+{
+    $why = Test-GaDataDir $DataDir
+    if ($why) { throw $why }
+    $DataDir = (Resolve-Path $DataDir).Path
     $inst | Add-Member -NotePropertyName DataDir -NotePropertyValue $DataDir -Force
     Save-GaInstall $inst
+    Write-Host "server data: $DataDir (used where it is)"
 }
 $ownData = -not $inst.DataDir
 
